@@ -7,11 +7,9 @@ from collections import deque
 import random
 from trading_env import TransferMarketEnv
 
-# 1. Device Setup
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Training on device: {device}")
 
-# 2. DQN Architecture
 class DQN(nn.Module):
     def __init__(self, obs_space, action_space):
         super(DQN, self).__init__()
@@ -26,7 +24,6 @@ class DQN(nn.Module):
     def forward(self, x):
         return self.fc(x)
 
-# 3. Replay Buffer for Stable Optimization
 class ReplayBuffer:
     def __init__(self, capacity=10000):
         self.buffer = deque(maxlen=capacity)
@@ -45,14 +42,13 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
-# 4. Training Loop Setup
 env = TransferMarketEnv(ticker="AAPL")
 obs_dim = env.observation_space.shape[0]
 n_actions = env.action_space.n
 
 policy_net = DQN(obs_dim, n_actions).to(device)
 optimizer = optim.Adam(policy_net.parameters(), lr=0.0005)
-criterion = nn.SmoothL1Loss() # Huber loss for robust gradient updates
+criterion = nn.SmoothL1Loss() 
 memory = ReplayBuffer(capacity=10000)
 
 epochs = 300
@@ -64,7 +60,7 @@ epsilon_min = 0.02
 
 episode_rewards = []
 
-print("Starting training with Experience Replay...")
+print("Starting training with Experience Replay")
 for epoch in range(epochs):
     state, _ = env.reset()
     done = False
@@ -83,7 +79,6 @@ for epoch in range(epochs):
         state = next_state
         total_reward += reward
 
-        # Train with batch from buffer
         if len(memory) >= batch_size:
             b_state, b_action, b_reward, b_next_state, b_done = memory.sample(batch_size)
             
@@ -104,7 +99,6 @@ for epoch in range(epochs):
         avg_last_30 = np.mean(episode_rewards[-30:])
         print(f"Epoch {epoch+1:3d}/{epochs} | Avg Profit (Last 30): ${avg_last_30:8.2f} | Epsilon: {epsilon:.3f}")
 
-# 5. Baseline Evaluation (Buy & Hold)
 start_price = float(env.prices[0])
 end_price = float(env.prices[-1])
 units_buy_hold = int(env.initial_balance // start_price)
@@ -118,13 +112,10 @@ print(f"Agent Final Epoch Profit     : ${episode_rewards[-1]:8.2f}")
 print(f"Agent Peak Epoch Profit      : ${max(episode_rewards):8.2f}")
 print("="*45)
 
-# 6. Save Model & Performance Graphs for Report
 torch.save(policy_net.state_dict(), "trained_agent.pth")
-print("Model saved to trained_agent.pth")
 
 plt.figure(figsize=(10, 5))
 plt.plot(episode_rewards, label="DQN Agent Return ($)", color="#1f77b4", alpha=0.6)
-# Moving average smoothing line
 moving_avg = np.convolve(episode_rewards, np.ones(15)/15, mode='valid')
 plt.plot(range(14, len(episode_rewards)), moving_avg, label="15-Epoch Moving Average", color="#d62728", linewidth=2)
 plt.axhline(y=buy_hold_profit, color="green", linestyle="--", label=f"Buy & Hold Baseline (${buy_hold_profit:.2f})")
@@ -136,4 +127,3 @@ plt.legend()
 plt.grid(True, linestyle=":", alpha=0.6)
 plt.tight_layout()
 plt.savefig("training_performance.png", dpi=300)
-print("Saved evaluation graph as 'training_performance.png'")
